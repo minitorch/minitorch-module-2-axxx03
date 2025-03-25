@@ -36,7 +36,10 @@ class Linear(minitorch.Module):
         self.out_size = out_size
 
     def forward(self, x):
+        
         (batch_size, in_size) = x.shape
+        
+        # 因为现在还没实现矩阵乘法，所以只能先这么做
         
         x_times_w = (x.view(batch_size, in_size, 1) * self.weights.value).sum(1)
         # 如果不加 1，会报错: Shapes [50, 2] and [2, 2] cannot be broadcasted
