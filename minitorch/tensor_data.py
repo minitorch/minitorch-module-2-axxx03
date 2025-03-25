@@ -42,10 +42,8 @@ def index_to_position(index: Index, strides: Strides) -> int:
     Returns:
         Position in storage
     """
-
-    # TODO: Implement for Task 2.1.
-    raise NotImplementedError("Need to implement for Task 2.1")
-
+    # the general formula is that it is [s1 * ind1 + s2 * ind2, s3 * ind3
+    return np.dot(index, strides)
 
 def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
     """
@@ -60,8 +58,9 @@ def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
         out_index : return index corresponding to position.
 
     """
-    # TODO: Implement for Task 2.1.
-    raise NotImplementedError("Need to implement for Task 2.1")
+    for i in range(len(shape) - 1, -1, -1):
+        out_index[i] = ordinal % shape[i]
+        ordinal = ordinal // shape[i]
 
 
 def broadcast_index(
@@ -74,6 +73,13 @@ def broadcast_index(
     given. Additional dimensions may need to be mapped to 0 or
     removed.
 
+    翻译：将一个较大张量的索引 big_index（维度为 big_shape）转换为
+    一个较小张量的索引 out_index（维度为 shape），遵循广播规则。
+    在这种情况下，big_shape 可能比 shape 有更多的维度或更大的尺寸。
+    额外的维度可能需要映射为0或被移除。
+    
+    功能：基于广播机制，将大张量的 index 映射到小张量的 index 上
+    
     Args:
         big_index : multidimensional index of bigger tensor
         big_shape : tensor shape of bigger tensor
@@ -83,14 +89,17 @@ def broadcast_index(
     Returns:
         None
     """
-    # TODO: Implement for Task 2.2.
-    raise NotImplementedError("Need to implement for Task 2.2")
+    for i in range(len(shape)):
+        offset = i + len(big_shape) - len(shape)
+        out_index[i] = big_index[offset] if shape[i] != 1 else 0
 
 
 def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
     """
     Broadcast two shapes to create a new union shape.
 
+    功能：生成 broadcast 后的 dim
+    
     Args:
         shape1 : first shape
         shape2 : second shape
@@ -100,9 +109,68 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
 
     Raises:
         IndexingError : if cannot broadcast
+    
+    Explanation:
+        - 当两个数组的形状在某个维度上相等，或者其中一个维度为1时，可以进行广播
+        - 广播规则：
+            - 如果两个数组的形状在某个维度上相等，则该维度上的值保持不变
+            - 如果其中一个数组的形状在某个维度上为1，则该维度上的值将被扩展为与另一个数组在该维度上的值相同
+            - 如果两个数组的形状在某个维度上不相等且都不为1，则抛出IndexingError异常
+        - 另一版的规则（来自 youtube）
+            - 规则 1：大小为 1 的维度可以与任何维度进行广播。
+            - 规则 2：可以使用view操作添加额外的大小为 1 的维度。
+            - 规则 3：zip操作会自动添加起始的大小为 1 的维度
+    
+    Example:
+        - A	            B	        结果
+        (3, 4, 5)	    (3, 1, 5)	(3, 4, 5)
+        (3, 4, 1)	    (3, 1, 5)	(3, 4, 5)
+        (3, 4, 1)	    (1, 5)	    (3, 4, 5)
+        (3, 4, 1)	    (3, 5)	    Fail
+        
+    Note from YouTuBe - 广播的作用
+        - 作用如下：
+            - Apply same operation multiple times
+            - Avoid loops and writes
+            - Save memory
+        - 例如，对于 [1,2,3] + 10 这个运算，有两种原始实现方式
+            - 原始实现 1：
+                - 实现：转换成 [1,2,3] + [10,10,10]
+                - 缺点：需要额外的内存空间
+            - 原始实现 2：
+                - 实现：for 循环给 [1,2,3] 每个位置上 + 10
+                - 缺点：额外的运算，导致 graph 变得复杂
+            - 广播可以解决这个问题，从而方便地实现下面的 zip
+
+                a = tensor([1, 2, 4])
+                b = tensor([3, 2])
+                out = zeros((3, 2))
+                for i in range(3):
+                    for j in range(2):
+                        out.data[i][j] = a[i] + b[j]
+
+            
     """
-    # TODO: Implement for Task 2.2.
-    raise NotImplementedError("Need to implement for Task 2.2")
+    shape1 = list(shape1)
+    shape2 = list(shape2)
+    
+    # 补齐维度，使两个形状长度相同
+    while len(shape1) < len(shape2):
+        shape1.insert(0, 1)
+    while len(shape2) < len(shape1):
+        shape2.insert(0, 1)
+    
+    result = []
+    for s1, s2 in zip(shape1, shape2):
+        if s1 == s2:
+            result.append(s1)
+        elif s1 == 1:
+            result.append(s2)
+        elif s2 == 1:
+            result.append(s1)
+        else:
+            raise IndexingError(f"Shapes {shape1} and {shape2} cannot be broadcasted")
+    return tuple(result)
 
 
 def strides_from_shape(shape: UserShape) -> UserStrides:
@@ -221,9 +289,10 @@ class TensorData:
         assert list(sorted(order)) == list(
             range(len(self.shape))
         ), f"Must give a position to each dimension. Shape: {self.shape} Order: {order}"
-
-        # TODO: Implement for Task 2.1.
-        raise NotImplementedError("Need to implement for Task 2.1")
+        
+        new_shape = tuple([self.shape[o] for o in order])
+        new_strides = tuple([self.strides[o] for o in order])
+        return TensorData(self._storage, new_shape, new_strides)
 
     def to_string(self) -> str:
         s = ""
