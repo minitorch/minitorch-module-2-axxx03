@@ -13,7 +13,6 @@ from .tensor_data import (
     index_to_position,
     shape_broadcast,
     to_index,
-    OutIndex
 )
 
 if TYPE_CHECKING:
@@ -330,9 +329,9 @@ def tensor_zip(fn: Callable[[float, float], float]) -> Any:
         b_shape: Shape,
         b_strides: Strides,
     ) -> None:
-        a_idx: OutIndex
-        b_idx: OutIndex
-        out_id: OutIndex
+        a_idx = np.array(a_shape)
+        b_idx = np.array(b_shape)
+        out_idx = np.array(out_shape)
 
         for i in range(len(out_storage)):
             to_index(i, out_shape, out_idx)
@@ -375,7 +374,7 @@ def tensor_reduce(fn: Callable[[float, float], float]) -> Any:
         a_strides: Strides,
         reduce_dim: int,
     ) -> None:
-        out_idx: OutIndex
+        out_idx = np.array(out_shape)
         
         for i in range(len(out_storage)):
             to_index(i, out_shape, out_idx)
