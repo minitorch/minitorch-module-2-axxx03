@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Callable, Optional, Type
 
+import copy
 import numpy as np
 from typing_extensions import Protocol
 
@@ -249,7 +250,7 @@ def tensor_map(fn: Callable[[float], float]) -> Any:
 
     Args:
         fn: function from float-to-float to apply
-        out (array): storage for out tensor
+        out_storage (array): storage for out tensor
         out_shape (array): shape for out tensor
         out_strides (array): strides for out tensor
         in_storage (array): storage for in tensor
@@ -258,21 +259,31 @@ def tensor_map(fn: Callable[[float], float]) -> Any:
 
     Returns:
         None : Fills in `out`
+    
+    解析：
+        只需要循环遍历 array，来计算生成 out 中的每一个元素即可。
+        - 我们通过 to_index 函数把索引 i 映射到 out_index 坐标上
+        - 之后根据广播机制找到它对应在 in 的坐标
+        - 然后将 in 的坐标转为 in 存储上的位置，然后执行映射即可
     """
 
     def _map(
-        out: Storage,
+        out_storage: Storage,
         out_shape: Shape,
         out_strides: Strides,
         in_storage: Storage,
         in_shape: Shape,
         in_strides: Strides,
     ) -> None:
-        # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        out_index = np.array(out_shape)
+        in_index = np.array(in_shape)
+        for i in range(len(out_storage)):
+            to_index(i, out_shape, out_index)
+            broadcast_index(out_index, out_shape, in_shape, in_index)
+            out_storage[index_to_position(out_index, out_strides)] = \
+                fn(in_storage[index_to_position(in_index, in_strides)])
 
     return _map
-
 
 def tensor_zip(fn: Callable[[float, float], float]) -> Any:
     """
@@ -308,7 +319,7 @@ def tensor_zip(fn: Callable[[float, float], float]) -> Any:
     """
 
     def _zip(
-        out: Storage,
+        out_storage: Storage,
         out_shape: Shape,
         out_strides: Strides,
         a_storage: Storage,
@@ -318,8 +329,17 @@ def tensor_zip(fn: Callable[[float, float], float]) -> Any:
         b_shape: Shape,
         b_strides: Strides,
     ) -> None:
-        # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        a_idx = np.array(a_shape)
+        b_idx = np.array(b_shape)
+        out_idx = np.array(out_shape)
+
+        for i in range(len(out_storage)):
+            to_index(i, out_shape, out_idx)
+            broadcast_index(out_idx, out_shape, a_shape, a_idx)
+            broadcast_index(out_idx, out_shape, b_shape, b_idx)
+            out_storage[index_to_position(out_idx, out_strides)] = \
+                fn(a_storage[index_to_position(a_idx, a_strides)], 
+                   b_storage[index_to_position(b_idx, b_strides)])
 
     return _zip
 
@@ -346,7 +366,7 @@ def tensor_reduce(fn: Callable[[float, float], float]) -> Any:
     """
 
     def _reduce(
-        out: Storage,
+        out_storage: Storage,
         out_shape: Shape,
         out_strides: Strides,
         a_storage: Storage,
@@ -354,8 +374,16 @@ def tensor_reduce(fn: Callable[[float, float], float]) -> Any:
         a_strides: Strides,
         reduce_dim: int,
     ) -> None:
-        # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        out_idx = np.array(out_shape)
+        
+        for i in range(len(out_storage)):
+            to_index(i, out_shape, out_idx)
+            o_idx = index_to_position(out_idx, out_strides)
+            for j in range(a_shape[reduce_dim]):
+                a_idx = copy.deepcopy(out_idx)
+                a_idx[reduce_dim] = j
+                a_pos = index_to_position(a_idx, a_strides)
+                out_storage[o_idx] = fn(out_storage[o_idx], a_storage[a_pos])
 
     return _reduce
 

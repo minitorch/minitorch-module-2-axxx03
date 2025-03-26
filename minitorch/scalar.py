@@ -92,43 +92,43 @@ class Scalar:
         return Mul.apply(b, Inv.apply(self))
 
     def __add__(self, b: ScalarLike) -> Scalar:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        return Add.apply(self, b)
 
     def __bool__(self) -> bool:
         return bool(self.data)
 
     def __lt__(self, b: ScalarLike) -> Scalar:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        return LT.apply(self, b)
 
     def __gt__(self, b: ScalarLike) -> Scalar:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        return LT.apply(b, self)
 
     def __eq__(self, b: ScalarLike) -> Scalar:  # type: ignore[override]
-        raise NotImplementedError("Need to include this file from past assignment.")
+        return EQ.apply(self, b)
 
     def __sub__(self, b: ScalarLike) -> Scalar:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        return Add.apply(self, Neg.apply(b))
 
     def __neg__(self) -> Scalar:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        return Neg.apply(self)
 
     def __radd__(self, b: ScalarLike) -> Scalar:
-        return self + b
+        return Add.apply(b, self)
 
     def __rmul__(self, b: ScalarLike) -> Scalar:
-        return self * b
+        return Mul.apply(b, self)
 
     def log(self) -> Scalar:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        return Log.apply(self)
 
     def exp(self) -> Scalar:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        return Exp.apply(self)
 
     def sigmoid(self) -> Scalar:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        return Sigmoid.apply(self)
 
     def relu(self) -> Scalar:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        return ReLU.apply(self)
 
     # Variable elements for backprop
 
@@ -158,12 +158,35 @@ class Scalar:
         return self.history.inputs
 
     def chain_rule(self, d_output: Any) -> Iterable[Tuple[Variable, Any]]:
+        """
+        Computes the chain rule for backpropagation.
+
+        This method takes the derivative of the output with respect to the current
+        variable and propagates it backward through the computation graph to compute
+        the derivatives with respect to the input variables.
+
+        Args:
+            d_output (Any): The derivative of the output with respect to the current variable.
+
+        Returns:
+            Iterable[Tuple[Variable, Any]]: An iterable of tuples, where each tuple contains
+            a variable and its corresponding derivative.
+        """
         h = self.history
         assert h is not None
         assert h.last_fn is not None
         assert h.ctx is not None
-
-        raise NotImplementedError("Need to include this file from past assignment.")
+        
+        vd_list = []
+        
+        last_d_outputs = h.last_fn._backward(h.ctx, d_output)
+        last_scalars = h.inputs
+        
+        for last_d_output, last_scalar in zip(last_d_outputs, last_scalars):
+            if not last_scalar.is_constant():
+                vd_list.append((last_scalar, last_d_output))
+        
+        return vd_list
 
     def backward(self, d_output: Optional[float] = None) -> None:
         """
